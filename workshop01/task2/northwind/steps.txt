@@ -6,15 +6,13 @@ docker volume create mynet-vol
 # Create Network
 docker network create myapp-net
 
-
 # Create the database, put the database in myapp-net
 # Mount the volume myapp-vol to /var/lib/mysql
 docker run -d --name mydb \
-    --mount type=volume, src=myapp-vol, dst=/var/lib/mysql \
+    --mount type=volume,src=myapp-vol,dst=/var/lib/mysql \
     --network myapp-net \
     stackupiss/northwind-db:v1
 
-4.
 # Create the application, put the application in myapp-net
 # Connect to the database
 docker run -d -p 8080:3000 --name myapp \
