@@ -1,0 +1,25 @@
+FROM python
+
+# create the /app directory, cd into /app
+WORKDIR /app
+
+# How to build the application
+# inside /app
+# copy files from local into the container
+COPY main.py .
+COPY requirements.txt .
+COPY utils.py .
+
+COPY public public
+COPY templates templates
+
+ENV PORT=5000
+ENV INSTANCE_NAME="dov-bear"
+ENV INSTANCE_HASH="workshop01_1234567890"
+
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+EXPOSE ${APP_PORT}
+
+ENTRYPOINT python main.py
