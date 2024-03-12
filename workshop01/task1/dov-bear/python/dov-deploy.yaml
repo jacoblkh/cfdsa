@@ -25,14 +25,17 @@ spec:
         image: chukmunnlee/dov-bear:v5
         imagePullPolicy: IfNotPresent
         env: # environment variables
-        - name: INSTANCE_NAME 
-          value: "dov pod"
+        # - name: INSTANCE_NAME 
+        #   value: "dov pod"
         - name: INSTANCE_HASH 
           valueFrom:
             fieldRef:
-              fieldPath: metadata.labels['app']
+              fieldPath: status.podIP
+        envFrom:
+        - configMapRef:
+            name: dov-cm
         ports:
-        - name: web-port 
+        - name: web-port
           containerPort: 3000
         - name: metrics-port
           containerPort: 3100
@@ -42,3 +45,25 @@ spec:
             port: web-port
           periodSeconds: 30
           initialDelaySeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dov-svc
+  namespace: myns
+  labels:
+    app: dov
+    name: dov-svc
+spec:
+  type: ClusterIP
+  selector: 
+    app: dov
+    name: dov-po
+  ports:
+  - name: svc-web-port
+    port: 5000
+    targetPort: web-port
+  - name: svc-metrics-port
+    port: 5100
+    targetPort: metrics-port
