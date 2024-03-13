@@ -7,8 +7,6 @@ metadata:
     app: cs
 data:
   TZ: Asia/Singapore
-  PASSWORD: password
-  SUDO_PASSWORD: password
   DEFAULT_WORKSPACE: /config/workspace
   PROXY_DOMAIN: code-137.184.249.161.nip.io
 
@@ -32,7 +30,7 @@ metadata:
   name: workspace-pvc 
   namespace: codeserver 
 spec: 
-  accessModes:
+  accessModes: # ['read,write,once']
   - ReadWriteOnce
   resources:
     requests:
@@ -62,9 +60,6 @@ spec:
         name: cs-po 
     spec:
       volumes:
-      - name: cs-vol
-        configMap: 
-          name: cs-cm
       - name: workspace-vol
         persistentVolumeClaim:
           claimName: workspace-pvc
@@ -72,6 +67,11 @@ spec:
       - name: cs-container
         image: linuxserver/code-server:amd64-4.22.0
         imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: cs-cm
+        - secretRef:
+            name: cs-secret
         ports:
         - name: cs-port
           containerPort: 8443
