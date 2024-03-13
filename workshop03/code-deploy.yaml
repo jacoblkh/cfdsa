@@ -62,6 +62,9 @@ spec:
         name: cs-po 
     spec:
       volumes:
+      - name: cs-vol
+        configMap: 
+          name: cs-cm
       - name: workspace-vol
         persistentVolumeClaim:
           claimName: workspace-pvc
@@ -109,10 +112,6 @@ spec:
   ingressClassName: nginx
   rules:
   - host: code-137.184.249.161.nip.io
-      # valueFrom:
-      #   configMapKeyRef:
-      #     name: cs-cm
-      #     key: PROXY_DOMAIN
     http:
       paths:
       - path: /
