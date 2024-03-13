@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cs-cm
+  namespace: codeserver
+  labels:
+    app: cs
+data:
+  TZ: Asia/Singapore
+  PASSWORD: password
+  SUDO_PASSWORD: password
+  DEFAULT_WORKSPACE: /config/workspace
+  PROXY_DOMAIN: code-137.184.249.161.nip.io
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cs-secret
+  namespace: codeserver
+  labels:
+    app: cs
+type: Opaque
+data:
+  PASSWORDL: cGFzc3dvcmQ=  # base64 encoded value of 'password'
+  SUDO_PASSWORD: cGFzc3dvcmQ=
+
+--- 
+apiVersion: v1 
+kind: PersistentVolumeClaim 
+metadata:
+  name: workspace-pvc 
+  namespace: codeserver 
+spec: 
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: do-block-storage-retain # do-block-storage
+
+---
+apiVersion: apps/v1
+kind: Deployment  
+metadata: 
+  name: cs-deploy
+  namespace: codeserver 
+  labels:
+    app: cs
+    name: cs-deploy
+spec: 
+  replicas: 1
+  selector: 
+    matchLabels:
+      app: cs
+      name: cs-po 
+  template: 
+    metadata:
+      name: cs-po 
+      labels:
+        app: cs 
+        name: cs-po 
+    spec:
+      volumes:
+      - name: workspace-vol
+        persistentVolumeClaim:
+          claimName: workspace-pvc
+      containers: 
+      - name: cs-container
+        image: linuxserver/code-server:amd64-4.22.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: cs-port
+          containerPort: 8443
+        volumeMounts:
+        - name: workspace-vol 
+          mountPath: /config/workspace
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cs-svc
+  namespace: codeserver
+  labels:
+    app: cs
+    name: cs-svc
+spec:
+  type: ClusterIP
+  # type: NodePort
+  # type: LoadBalancer
+  selector:
+    app: cs
+    name: cs-po
+  ports:
+  - port: 8443
+    targetPort: cs-port
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cs-ing
+  namespace: codeserver
+  labels:
+    app: cs
+    name: cs-ing
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: code-137.184.249.161.nip.io
+      # valueFrom:
+      #   configMapKeyRef:
+      #     name: cs-cm
+      #     key: PROXY_DOMAIN
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: cs-svc
+            port: 
+              number: 8443
