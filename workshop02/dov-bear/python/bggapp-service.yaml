@@ -7,9 +7,9 @@ metadata:
     app: bgg
     name: bggapp-svc
 spec:
-  # type: ClusterIP
+  type: ClusterIP
   # type: NodePort
-  type: LoadBalancer
+  # type: LoadBalancer
   selector:
     app: bgg
     name: bggapp-po
