@@ -96,7 +96,8 @@ spec:
     app: cs
     name: cs-po
   ports:
-  - port: 8443
+  - name: svc-cs-port
+    port: 8443
     targetPort: cs-port
 
 ---
