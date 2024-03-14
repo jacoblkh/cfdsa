@@ -1,0 +1,176 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  data:
+    INSTANCE_HASH: this is from kustomize configmap generator
+  kind: ConfigMap
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","data":{"INSTANCE_HASH":"this is from kustomize configmap generator"},"kind":"ConfigMap","metadata":{"annotations":{},"labels":{"dept":"eng","env":"test"},"name":"test-nsdov-cm","namespace":"test-ns"}}
+    labels:
+      dept: eng
+      env: test
+    name: test-nsdov-cm
+    namespace: test-ns
+- apiVersion: v1
+  data:
+    INSTANCE_NAME: bmFtZSBmcm9tIGNvbmZpZ21hcA==
+  kind: Secret
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","data":{"INSTANCE_NAME":"bmFtZSBmcm9tIGNvbmZpZ21hcA=="},"kind":"Secret","metadata":{"annotations":{},"labels":{"dept":"eng","env":"test"},"name":"test-nsdov-secret","namespace":"test-ns"},"type":"Opaque"}
+    labels:
+      dept: eng
+      env: test
+    name: test-nsdov-secret
+    namespace: test-ns
+  type: Opaque
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"labels":{"app":"dov","dept":"eng","env":"test","name":"dov-svc"},"name":"test-nsdov-svc","namespace":"test-ns"},"spec":{"ports":[{"name":"svc-web-port","port":5000,"targetPort":"web-port"},{"name":"svc-metrics-port","port":5100,"targetPort":"metrics-port"}],"selector":{"app":"dov","dept":"eng","env":"test","name":"dov-po"},"type":"ClusterIP"}}
+    labels:
+      app: dov
+      dept: eng
+      env: test
+      name: dov-svc
+    name: test-nsdov-svc
+    namespace: test-ns
+  spec:
+    ports:
+    - name: svc-web-port
+      port: 5000
+      targetPort: web-port
+    - name: svc-metrics-port
+      port: 5100
+      targetPort: metrics-port
+    selector:
+      app: dov
+      dept: eng
+      env: test
+      name: dov-po
+    type: ClusterIP
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app":"dov","dept":"eng","env":"test","name":"dov-deploy"},"name":"test-nsdov-deploy","namespace":"test-ns"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"dov","dept":"eng","env":"test","name":"dov-po"}},"template":{"metadata":{"labels":{"app":"dov","dept":"eng","env":"test","name":"dov-po"},"name":"dov-po"},"spec":{"":"{ \"volumes\": \n  [ { \"name\": \"my-vol\", \"emptyDir\": {} } ]\n}","containers":[{"env":[{"name":"INSTANCE_HASH","valueFrom":{"fieldRef":{"fieldPath":"status.podIP"}}}],"envFrom":[{"configMapRef":{"name":"test-nsdov-cm"}}],"image":"chukmunnlee/dov-bear:v5","imagePullPolicy":"IfNotPresent","livenessProbe":{"httpGet":{"path":"/healthz","port":"web-port"},"initialDelaySeconds":5,"periodSeconds":30},"name":"dov-container","ports":[{"containerPort":3000,"name":"web-port"},{"containerPort":3100,"name":"metrics-port"}],"resources":{"limits":{"cpu":"32m","memory":"64Mi"},"requests":{"cpu":"32m","memory":"32Mi"}}}]}}}}
+    labels:
+      app: dov
+      dept: eng
+      env: test
+      name: dov-deploy
+    name: test-nsdov-deploy
+    namespace: test-ns
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: dov
+        dept: eng
+        env: test
+        name: dov-po
+    template:
+      metadata:
+        labels:
+          app: dov
+          dept: eng
+          env: test
+          name: dov-po
+        name: dov-po
+      spec:
+        "": "{ \"volumes\": \n  [ { \"name\": \"my-vol\", \"emptyDir\": {} } ]\n}"
+        containers:
+        - env:
+          - name: INSTANCE_HASH
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          envFrom:
+          - configMapRef:
+              name: test-nsdov-cm
+          image: chukmunnlee/dov-bear:v5
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: web-port
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          name: dov-container
+          ports:
+          - containerPort: 3000
+            name: web-port
+          - containerPort: 3100
+            name: metrics-port
+          resources:
+            limits:
+              cpu: 32m
+              memory: 64Mi
+            requests:
+              cpu: 32m
+              memory: 32Mi
+- apiVersion: autoscaling/v2
+  kind: HorizontalPodAutoscaler
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"autoscaling/v2","kind":"HorizontalPodAutoscaler","metadata":{"annotations":{},"labels":{"dept":"eng","env":"test"},"name":"test-nsdov-hpa","namespace":"test-ns"},"spec":{"maxReplicas":4,"metrics":[{"resource":{"name":"cpu","target":{"averageUtilization":50,"type":"Utilization"}},"type":"Resource"},{"resource":{"name":"memory","target":{"averageUtilization":50,"type":"Utilization"}},"type":"Resource"}],"minReplicas":1,"scaleTargetRef":{"apiVersion":"apps/v1","kind":"Deployment","name":"test-nsdov-deploy"}}}
+    labels:
+      dept: eng
+      env: test
+    name: test-nsdov-hpa
+    namespace: test-ns
+  spec:
+    maxReplicas: 4
+    metrics:
+    - resource:
+        name: cpu
+        target:
+          averageUtilization: 50
+          type: Utilization
+      type: Resource
+    - resource:
+        name: memory
+        target:
+          averageUtilization: 50
+          type: Utilization
+      type: Resource
+    minReplicas: 1
+    scaleTargetRef:
+      apiVersion: apps/v1
+      kind: Deployment
+      name: test-nsdov-deploy
+- apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"networking.k8s.io/v1","kind":"Ingress","metadata":{"annotations":{},"labels":{"app":"dov","dept":"eng","env":"test","name":"dov-ing"},"name":"test-nsdov-ing","namespace":"test-ns"},"spec":{"ingressClassName":"nginx","rules":[{"host":"dov-137.184.249.161.nip.io","http":{"paths":[{"backend":{"service":{"name":"test-nsdov-svc","port":{"name":"svc-web-port"}}},"path":"/","pathType":"Prefix"}]}}]}}
+    labels:
+      app: dov
+      dept: eng
+      env: test
+      name: dov-ing
+    name: test-nsdov-ing
+    namespace: test-ns
+  spec:
+    ingressClassName: nginx
+    rules:
+    - host: dov-137.184.249.161.nip.io
+      http:
+        paths:
+        - backend:
+            service:
+              name: test-nsdov-svc
+              port:
+                name: svc-web-port
+          path: /
+          pathType: Prefix
+kind: List
+metadata: {}
