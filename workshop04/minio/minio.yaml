@@ -1,8 +1,26 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minio-ns
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-cm
+  namespace: minio-ns
+  labels:
+    app: minio
+data:
+  MINIO_CI_CD: "1"
+
+---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: minio-credentials
-  namespace: minio-server
+  name: minio-secret
+  namespace: minio-ns
   labels:
     app: minio
 type: Opaque
@@ -11,16 +29,38 @@ data:
   MINIO_ROOT_PASSWORD: Y2hhbmdlaXQ=
 
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-svc
+  namespace: minio-ns
+  labels:
+    app: minio
+    name: minio-svc 
+spec:
+  type: ClusterIP
+  selector:
+    app: minio
+    name: minio-po
+  ports:
+  - name: data-port
+    port: 9000
+    targetPort: 9000
+  - name: console-port
+    port: 9090
+    targetPort: 9090
+  
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: minio-sts
-  namespace: minio-server 
+  namespace: minio-ns 
   labels:
     app: minio
-    name: minio-deploy
+    name: minio-sts
 spec:
-  replicas: 4
+  replicas: 3
   serviceName: minio-hsvc
   selector:
     matchLabels:
@@ -44,94 +84,114 @@ spec:
         app: minio
         name: minio-po
     spec:
+      initContainers:
+      - name: minio-init
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - "chown 1001:1001 /opt/data"
+        volumeMounts:
+        - name: data-vol 
+          mountPath: /opt/data
       containers:
       - name: minio-container
-        image: bitnami/minio:2024.3.10
+        image: bitnami/minio:2023.12.23
         imagePullPolicy: IfNotPresent
-        env:
-        - name: MINIO_ROOT_USER
-          valueFrom:
-            secretKeyRef:
-              name: minio-credentials
-              key: MINIO_ROOT_USER
-        - name: MINIO_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: minio-credentials
-              key: MINIO_ROOT_PASSWORD
+        command: # exec
+        - minio
+        - server
+        - --address=:9000
+        - --console-address=:9090
+        - minio-sts-{0...2}.minio-hsvc.minio-ns.cluster.local/opt/data
+        # command:
+        # - /bin/sh
+        # - -c
+        # - "minio server --addresss=:${ }..."
+        envFrom:
+        - configMapRef:
+            name: minio-cm
+        - secretRef:
+            name: minio-secret
         ports:
         - name: data-port
           containerPort: 9000
-        - name: console-port
+        - name: web-port
           containerPort: 9090
-        resources:
-          requests:
-            cpu: 200m
-            memory: 200Mi
         volumeMounts:
         - name: data-vol 
-          mountPath: /data
-        readinessProbe:
-          httpGet:
-            path: /minio/health/ready
-            port: 900
-          initialDelaySeconds: 5
-          periodSeconds: 20
-        livenessProbe:
-          httpGet:
-            path: /minio/health/live
-            port: 900
-          initialDelaySeconds: 5
-          periodSeconds: 20
+          mountPath: /opt/data
+        # resources:
+        #   requests:
+        #     cpu: 200m
+        #     memory: 200Mi
+        # readinessProbe:
+        #   httpGet:
+        #     path: /minio/health/ready
+        #     port: 900
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 20
+        # livenessProbe:
+        #   httpGet:
+        #     path: /minio/health/live
+        #     port: 900
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 20
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: minio-svc
-  namespace: minio-server
+  namespace: minio-ns
+  labels:
+    app: minio
+    name: minio-svc 
 spec:
   clusterIP: None
   selector:
     app: minio
     name: minio-po
   ports:
-  - name: svc-data-port
+  - name: data-port
     port: 9000
-    targetPort: data-port
-  - name: svc-console-port
+    targetPort: 9000
+  - name: console-port
     port: 9090
-    targetPort: console-port
+    targetPort: 9090
 
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: minio-ing
-  namespace: minio-server
+  namespace: minio-ns
   labels:
     app: minio
     name: minio-ing
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: "10"
 spec:
   ingressClassName: nginx
   rules:
-  - host: data-137.184.249.161.nip.io
-    http:
-      paths:
-      - pathType: Prefix
-        path: "/"
-        backend:
-          service:
-            name: minio-svc
-            port:
-              number: 9000
   - host: console-137.184.249.161.nip.io
     http:
       paths:
-      - pathType: Prefix
-        path: "/"
+      - path: /
+        pathType: Prefix
         backend:
           service:
             name: minio-svc
             port:
-              number: 9090
+              name: console-port
+  - host: data-137.184.249.161.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: minio-svc
+            port:
+              name: data-port
