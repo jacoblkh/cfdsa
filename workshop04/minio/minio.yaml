@@ -25,8 +25,8 @@ metadata:
     app: minio
 type: Opaque
 data:
-  MINIO_ROOT_USER: Y2hhbmdlaXQ=
-  MINIO_ROOT_PASSWORD: Y2hhbmdlaXQ=
+  MINIO_ROOT_USER: YWRtaW4= # admin
+  MINIO_ROOT_PASSWORD: Y2hhbmdlaXQ= # password
 
 ---
 apiVersion: v1
